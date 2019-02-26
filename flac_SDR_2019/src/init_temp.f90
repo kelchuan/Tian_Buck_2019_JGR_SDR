@@ -52,9 +52,13 @@ case (1)
             ! E-fold depends on x (correction due to lateral change in geotherm)
 
             if(yc.ge.geoth) then
-                temp(j,i)=t_top+((tbos-t_top)/geoth)*yc
+!                temp(j,i)=t_top+((tbos-t_top)/geoth)*yc
+               temp(j,i) = 0 ! Tian for pure elastic test
             else
-                temp(j,i)=tbos + ((tbos-t_top)/(0.5*geoth))*(yc-geoth)
+!                temp(j,i)=tbos + ((tbos-t_top)/(0.5*geoth))*(yc-geoth)
+               temp(j,i) = 1300 ! Tian for pure elastic test
+!               temp(j,i) = 872.9 ! Tian for pure elastic test for power n = 1 to get 1e17 Pas for lower crust
+!               temp(j,i) = 500 ! Tian for pure elastic test for power n = 1 to get 1e17 Pas for lower crust
             endif
             if(temp(j,i).gt.t_bot) temp(j,i) = t_bot
         enddo

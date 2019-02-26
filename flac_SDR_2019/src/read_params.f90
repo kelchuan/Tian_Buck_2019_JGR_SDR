@@ -271,12 +271,12 @@ read(4,*) dtsave_file
 dtsave_file = dtsave_file * 1000 * sec_year
 call AdvanceToNextInputLine( 4 )
 read(4,*) lastsave
-
+call ReadMoreParams() !Tian
 close (iu)
 
 
 ! ADDITIONAL PARTICULAR INPUT
-!call ReadMoreParams()
+!call ReadMoreParams() !Tian
 
 return
 end
@@ -306,10 +306,10 @@ end
 
 subroutine ReadMoreParams()
 
-call ReadIntrusions()  ! - see user_ab.f90
-
-call ReadHydro()       ! - see user_luc.f90
-
-return
+!call ReadIntrusions()  ! - see user_ab.f90
+  call ReadHeatinject ! Tian see user_tian.f90
+  call ReadHydro()       ! - see user_luc.f90
+  call ReadParticles  ! Tian20170405  see user_Tian.f90
+  return
 end
 

@@ -22,6 +22,7 @@ integer function itest_mesh()
   if( mode_rem .eq. 11.or.mode_rem.eq.3 ) then
       testcr = dx_rem * rxbo / (nx-1)
       shortening = abs(cord(1,nx,1) - cord(1,1,1) - rxbo)
+      !shortening = abs(x0 - cord(1,1,1))
       if ( shortening .gt. testcr ) then
           if( dtout_screen .ne. 0 ) then
               print *, 'Remeshing due to shortening required: ', shortening
@@ -126,8 +127,8 @@ integer function itest_mesh()
   end do
 
   if( dtout_screen .ne. 0 ) then
-      write (6,'(A,F5.2,A,I3,A,I3,A,F5.2)') '        min.angle=',anglemint,' j=', jmint, ' i=',imint, ' dt(yr)=',dt/sec_year
-      write (333,'(A,F5.2,A,I3,A,I3,A,F5.2)') '        min.angle=',anglemint,' j=', jmint, ' i=',imint, ' dt(yr)=',dt/sec_year
+!      write (6,'(A,F5.2,A,I3,A,I3,A,F5.2)') '        min.angle=',anglemint,' j=', jmint, ' i=',imint, ' dt(yr)=',dt/365/24/3600 !(Tian1607 commented for faster run)
+!      write (333,'(A,F5.2,A,I3,A,I3,A,F5.2)') '        min.angle=',anglemint,' j=', jmint, ' i=',imint, ' dt(yr)=',dt/365/24/3600 !(Tian1607 commented for faster run)
       flush (333)
   endif
   ! check if the angle is smaller than angle of remeshing  

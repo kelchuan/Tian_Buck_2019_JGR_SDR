@@ -50,3 +50,8 @@ common /process/ sec_year,time,dt,time_max,nloop_restarted,nloop,irestart,ifreq_
 common /hooks/ if_intrus,if_hydro
 
 common /temporary/ devmax, dvmax
+
+common /user_Tian/ iinj1, iinj2, jinj1, jinj2, xlatheat, ratfac !Tian
+common /hydroth/ xmaxdepth,xmaxt,xmaxstr,xenhc1,xenhc2 !Tian from Ito
+integer*8 :: np,npelem,num_SDR
+common /particles_parameters/ np, npelem, num_SDR ! G.Ito particles for tracing top 8/07 !Tian20170405 from Ito

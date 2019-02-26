@@ -90,6 +90,7 @@ ifeq ($(F90), ifort)
 	       CFLAGS += -O0 -no-opt-subscript-in-range -ftrapuv -check all -traceback
 	       LDFLAGS +=
 	endif
+	CFLAGS += -simd
 endif
 
 ## for PGI
@@ -146,6 +147,7 @@ SRCS =	\
 	fl_rheol.f90 \
 	fl_srate.f90 \
 	fl_therm.f90 \
+	fl_injectheat.f90 \
 	flac.f90 \
 	functions.f90 \
 	init_areas.f90 \
@@ -165,6 +167,8 @@ SRCS =	\
 	outmarker.f90 \
 	outtracer.f90 \
 	par.f90 \
+	particle_move.f90 \
+	particle_seed.f90 \
 	read_params.f90 \
 	rem_cord.f90 \
 	remesh.f90 \
@@ -176,28 +180,37 @@ SRCS =	\
 	rsflac.f90 \
 	saveflac.f90 \
 	setflac.f90 \
-	user_ab.f90 \
-	user_luc.f90
+	user_Tian.f90
+#	user_ab.f90 \
+#	user_luc.f90 \
 
 
-MODULES = $(MODULE_SRCS:.f90=.mod)
-MODULE_OBJS = $(MODULE_SRCS:.f90=.o)
+
+MODULES = $(MODULE_SRCS:.f90=.mod)   # checkout makefile manual from gnu
+MODULE_OBJS = $(MODULE_SRCS:.f90=.o) # "substitution reference"
 OBJS = $(SRCS:.f90=.o)
 
-EXE = flac
+#
+#EXE = flac_SDR
+EXE = flac_SDR_para
 
 
 ########################################################################
 ## actions
 ########################################################################
 
-all: $(EXE)
+# target:prerequisite
+#(tab)	recipe
+# first make will check the whether all prerequisites are done and then
+# do the recipe
+all: clean clean-data $(EXE)
+	@rm *.o
 
 $(EXE): $(MODULE_OBJS) $(OBJS)
 	$(F90) $(LDFLAGS) $(MODULE_OBJS) $(OBJS) -o $@
 
 $(MODULE_OBJS): %.o : %.f90
-	$(F90) $(CFLAGS) -c $<
+	$(F90) $(CFLAGS) -c $<   
 
 $(OBJS): %.o : %.f90
 	$(F90) $(CFLAGS) -c $<

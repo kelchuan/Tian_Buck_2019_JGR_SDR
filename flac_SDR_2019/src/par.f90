@@ -75,15 +75,21 @@ i_search = 0
 devmax = 0
 dvmax = 0
 
+! adding surface particles following G. Ito 3/07 begin  Tian20170405
+if (npelem.gt.0) call particle_seed
+! adding surface particles following G. Ito 3/07 end
+
 !do index_nobody_would_use=1,1
 do while( time .le. time_max )
   nloop = nloop + 1
   if( dtout_screen .ne. 0 ) then
     if( dtacc_screen .gt. dtout_screen ) then
-       write(*,'(I10,A,F7.3,A,F8.1,A)') nloop,'''s step. Time[My]=', time/sec_year/1.e+6, &
-                ',  elapsed sec-', secnds(time0)
-       write(333,'(I10,A,F7.3,A,F8.1,A)') nloop,'''s step. Time[My]=', time/sec_year/1.e+6, &
-                ',  elapsed sec-', secnds(time0)
+!       write(*,'(I10,A,F7.3,A,F8.1,A)') nloop,'''s step. Time[My]=', time/sec_year/1.e+6, &
+!                ',  elapsed sec-', secnds(time0)
+!       write(333,'(I10,A,F7.3,A,F8.1,A)') nloop,'''s step. Time[My]=', time/sec_year/1.e+6, &
+!                ',  elapsed sec-', secnds(time0)
+       print *, nloop,'''s step. Time[My]=', time/sec_year/1.e+6, &
+            ',  elapsed sec-', secnds(time0)
        dtacc_screen = 0
     endif
   endif
@@ -112,15 +118,23 @@ do while( time .le. time_max )
   ! FLAC
   call flac
 
+  ! adding surface particles following G. Ito 3/07 begin  Tian20170405
+  if (npelem.gt.0) call particle_move
+  ! adding surface particles following G. Ito 3/07 end
+
   if( ireset.eq.1 ) ireset = 0
 
   ! Remeshing
   if( ny_rem.eq.1 .and. itherm.ne.2 ) then
     if( itest_mesh() .eq. 1 ) then
-      if(iynts.eq.1) call init_temp
+       ! Skip the therm calculations and maintain init_temp if itherm = 3 (Tian_2017May)
+       if ((itherm .eq. 3) .and. (iynts.eq.1)) then
+          call init_temp
+       endif
+!      if(iynts.eq.1) call init_temp  ![Tian Commented for thermal calculation]
       ! Some calculations was not performed every time step, need to
       ! perform these calculation before remeshing
-      if(topo_kappa .gt. 0 .and. mod(nloop, 100) .ne. 0) call resurface
+!      if(topo_kappa .gt. 0 .and. mod(nloop, 100) .ne. 0) call resurface !(Tian:commented)
 
       ! If there are markers recalculate their x,y global coordinate and assign them aps, eII, press, temp
       if(iint_marker.eq.1) then

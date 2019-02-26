@@ -40,7 +40,8 @@ function Eff_dens( j, i)
           dens = den(k) * ( 1 - alfa(k)*tmpr + beta(k)*press )
 
           if(k==ksed1 .or. k==ksed2) then
-              sed_min_density = 2400.
+!              sed_min_density = 2400. !Tian1607 
+              sed_min_density = 2700.
               delta_den = den(k) - sed_min_density
               zefold = 6000.
               if (j==1 .and. cord(j,i,2)>0.) then
@@ -107,7 +108,7 @@ HeatLatent = 420000.
 iph = iphase(j,i)
 !Eff_cp = cp(iph)
 
-
+goto 222 !comment this block (begin)
 tmpr = 0.25*(temp(j,i)+temp(j+1,i)+temp(j,i+1)+temp(j+1,i+1))
 if( tmpr .lt. ts(iph) ) then
     Eff_cp = cp(iph)
@@ -118,22 +119,23 @@ elseif( tmpr .lt. tl(iph) ) then
 else
     Eff_cp = cp(iph)
 endif
-
+222 continue !comment this block (end)
 
 ! HOOK
 ! Intrusions - melting effect - see user_ab.f90
-if( if_intrus .eq. 1 ) then
-    HeatLatent = 420000.
-
-    tmpr = 0.25*(temp(j,i)+temp(j+1,i)+temp(j,i+1)+temp(j+1,i+1))
-    if( tmpr .lt. ts(iph) ) then
-        Eff_cp = cp(iph)
-    elseif( tmpr .lt. tl(iph)+1 ) then
-        Eff_cp = cp(iph) + HeatLatent/(tl(iph)-ts(iph))
-    else
-        Eff_cp = cp(iph)
-    endif
+!if( if_intrus .eq. 1 ) then
+!   HeatLatent = 420000.
+HeatLatent = 500000. !following Behn and Ito 2008
+tmpr = 0.25*(temp(j,i)+temp(j+1,i)+temp(j,i+1)+temp(j+1,i+1))
+if( tmpr .lt. ts(iph) ) then
+   Eff_cp = cp(iph)
+!elseif( tmpr .lt. tl(iph)+1 ) then
+elseif( tmpr .lt. tl(iph)+1 .and. i.le.(iinj2) .and. i.ge.(iinj1) .and. j.le.(jinj2+1) .and. j.ge.(jinj1-1)) then
+   Eff_cp = cp(iph) + HeatLatent/(tl(iph)-ts(iph))
+else
+   Eff_cp = cp(iph)
 endif
+!endif
 
 return
 end function Eff_cp
@@ -148,7 +150,17 @@ include 'precision.inc'
 include 'params.inc'
 include 'arrays.inc'
 
+iph = iphase(j,i)
+cond = conduct(iph)
+! HOOK
+! Hydrothermal alteration of thermal diffusivity  - see user_luc.f90
+if( if_hydro .eq. 1 ) then
+   !        cond = HydroDiff(j,i)*den(iph)*cp(iph)
+   cond = HydroCond(j,i)
+endif
+Eff_conduct = cond
 
+goto 333 !Tian comment it, use a simplyfied without phase ratio
 if (iint_marker.ne.1) then
     iph = iphase(j,i)
     cond = conduct(iph)
@@ -162,7 +174,8 @@ if (iint_marker.ne.1) then
     ! HOOK
     ! Hydrothermal alteration of thermal diffusivity  - see user_luc.f90
     if( if_hydro .eq. 1 ) then
-        cond = HydroDiff(j,i)*den(iph)*cp(iph)
+       !        cond = HydroDiff(j,i)*den(iph)*cp(iph)
+       cond = HydroCond(j,i)
     endif
     Eff_conduct = cond
 
@@ -184,13 +197,18 @@ else
         ! HOOK
         ! Hydrothermal alteration of thermal diffusivity  - see user_luc.f90
         if( if_hydro .eq. 1 ) then
-            cond = HydroDiff(j,i)*den(k)*cp(k)
+           !            cond = HydroDiff(j,i)*den(k)*cp(k)
+           cond = HydroCond(j,i)
         endif
         Eff_conduct = Eff_conduct + phase_ratio(k,j,i)*cond
     enddo
 endif
+333 continue
 
 !write(*,*) Eff_conduct, cond
+!if (Eff_conduct > (xenhc1+0.1*(xenhc2-xenhc1)) * conduct(iph)) then !print when aps(j,i)>0.1
+!   print *, 'j=',j,'i=',i,'  Eff_conduct=', Eff_conduct
+!endif
 return
 end function Eff_conduct
 
@@ -216,6 +234,7 @@ r=8.31448e0
 tmpr = 0.25*(temp(j,i)+temp(j+1,i)+temp(j,i+1)+temp(j+1,i+1))
 srat = e2sr(j,i)
 if( srat .eq. 0 ) srat = vbc/rxbo
+iph = iphase(j,i)
 
 if (iint_marker.ne.1) then
     iph = iphase(j,i)
@@ -223,9 +242,10 @@ if (iint_marker.ne.1) then
     pow  =  1./pln(iph) - 1.
     pow1 = -1./pln(iph)
 
-    vis = 0.25 * srat**pow*(0.75*acoef(iph))**pow1* &
+!    vis = 0.25 * srat**pow*(0.75*acoef(iph))**pow1* &
+!         exp(eactiv(iph)/(pln(iph)*r*(tmpr+273.)))*1.e+6
+    vis = srat**pow*(acoef(iph))**pow1* &
          exp(eactiv(iph)/(pln(iph)*r*(tmpr+273.)))*1.e+6
-
 !!$    ! Effect of melt
 !!$    fmelt_crit = 0.05
 !!$    fmelt = Eff_melt(iph, tmpr)
@@ -252,16 +272,24 @@ if (iint_marker.ne.1) then
     Eff_visc = vis
 
 else
-
     do k = 1, nphase
         if(phase_ratio(k,j,i) .lt. 0.01) cycle
 
         pow  =  1./pln(k) - 1.
         pow1 = -1./pln(k)
 
-        vis = 0.25 * srat**pow*(0.75*acoef(k))**pow1* &
+!        vis = 0.25 * srat**pow*(0.75*acoef(k))**pow1* &
+!             exp(eactiv(k)/(pln(k)*r*(tmpr+273.)))*1.e+6
+       vis = srat**pow*(acoef(k))**pow1* &
              exp(eactiv(k)/(pln(k)*r*(tmpr+273.)))*1.e+6
-
+!        vis = 0.25 * srat**pow*(0.75*acoef(k))**pow1* &
+!             exp(eactiv(k)/(pln(k)*r*(tmpr+273.)))*1.e+6
+!        write(*,*) "temp=",tmpr
+!        write(*,*) "vis = ", vis
+!        write(*,*) "k=", k
+!        write(*,*) "pln(k)= ", pln(k)
+!        vis = srat**pow*(acoef(k))**pow1* &
+!             exp(eactiv(k)/(pln(k)*r*(tmpr+273.)))*1.e+6
         ! Effect of melt
         !fmelt_crit = 0.05
         !fmelt = Eff_melt(k, tmpr)
@@ -288,11 +316,13 @@ else
 
         ! harmonic mean
         Eff_visc = Eff_visc + phase_ratio(k,j,i) / vis
-        !write(*,*) i,j, Eff_visc, vis, tmpr,phase_ratio(k,j,i)
+!        Eff_visc = Eff_visc + phase_ratio(k,j,i) * vis
+!        write(*,*) i,j, Eff_visc, vis, tmpr,phase_ratio(k,j,i)
     enddo
 
     Eff_visc = 1 / Eff_visc
+!    write(*,*) "eff_visc=",Eff_visc
 endif
-
+!444 continue
 return
 end function Eff_visc

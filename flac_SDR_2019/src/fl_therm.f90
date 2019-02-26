@@ -53,7 +53,7 @@ do i = 1,nx-1
         ! Calculating effective material properties
         cp_eff = Eff_cp( j,i )
         cond_eff = Eff_conduct( j,i )
-
+!        print *, 'cp_eff= ', cp_eff, 'cond_eff', cond_eff
         ! if shearh-heating flag is true
         if( ishearh.eq.1 .and. itherm.ne.2 ) then
             dissip = shrheat(j,i)
@@ -80,8 +80,8 @@ do i = 1,nx-1
 
         ! Additional sources - radiogenic and shear heating
         tmpr = 0.25*(t1 + t2 + t3 + t4)
-        add_source(j,i) = ( source(j,i) + dissip/den(iph) - 600.*cp_eff*Eff_melt(iph,tmpr)) / cp_eff
-
+!        add_source(j,i) = ( source(j,i) + dissip/den(iph) - 600.*cp_eff*Eff_melt(iph,tmpr)) / cp_eff
+        add_source(j,i) = 0 !Tian debug NaN rhs
         ! (1) A element:
         flux(j,i,1,1) = -diff * ( t1*(y2-y3)+t2*(y3-y1)+t3*(y1-y2) ) * area(j,i,1)
         flux(j,i,1,2) = -diff * ( t1*(x3-x2)+t2*(x1-x3)+t3*(x2-x1) ) * area(j,i,1)
@@ -208,8 +208,10 @@ do i = 1,nx
             area_n = area_n + real_area13
             rhs = rhs + add_source(j  ,i  )*real_area13
 
-        endif
-
+         endif
+         if(i<3) then
+!            print *, 'add_source(',j,',',i,')=',add_source(j  ,i  ), 'rhs=',rhs,'dT=',rhs*dt_therm/area_n
+         endif
         ! Update Temperature by Eulerian method 
         temp(j,i) = temp(j,i)+rhs*dt_therm/area_n
     end do
@@ -250,7 +252,7 @@ time_t = time
 
 ! HOOK
 ! Intrusions - see user_ab.f90
-if( if_intrus.eq.1 ) call MakeIntrusions
+!if( if_intrus.eq.1 ) call MakeIntrusions
 
 return
 end 

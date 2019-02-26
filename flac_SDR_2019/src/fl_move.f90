@@ -13,7 +13,7 @@ if (movegrid .eq. 0) return
 
 ! UPDATING COORDINATES
 
-!$OMP parallel private(i)
+!$OMP parallel
 !$OMP do
 do i = 1,nx
 !    write(*,*) cord(j,i,1),cord(j,i,2),vel(j,i,1),vel(j,i,2),dt
@@ -141,14 +141,23 @@ include 'params.inc'
 include 'arrays.inc'
 
 dimension dh(mnx+1)
+real(8) :: infill_level
 
 !EROSION PROCESSES
-if( topo_kappa .gt. 0. ) then
+if( topo_kappa .gt. 0. ) then             
     do i = 2, nx-1
+        water_depth = 0.5*(cord(1,i+1,2)+cord(1,i,2))
+        if (water_depth.lt.0) then
+!          topo_kappa2 = topo_kappa/10
+          topo_kappa2 = topo_kappa/100 !(Tian201607: change from 10 to 100)
+        else
+          topo_kappa2 = topo_kappa
+        endif
         snder = ( (cord(1,i+1,2)-cord(1,i  ,2))/(cord(1,i+1,1)-cord(1,i  ,1)) - &
             (cord(1,i  ,2)-cord(1,i-1,2))/(cord(1,i  ,1)-cord(1,i-1,1)) ) / &
             (cord(1,i+1,1)-cord(1,i-1,1))
-        dh(i) = topo_kappa * dt * snder
+        dh(i) = topo_kappa2 * dt * snder
+ !       print *, 'erosion activated dh = ', dh(i)
     end do
 
     dh(1) = dh(2)
@@ -157,13 +166,30 @@ if( topo_kappa .gt. 0. ) then
 
     ! accumulated topo change since last resurface
     dhacc(1:nx-1) = dhacc(1:nx-1) + 0.5 * (dh(1:nx-1) + dh(2:nx))
+!    print *, 'dhacc = ', dhacc(1:nx-1)
+    ! Forced sedimentation to a prescribed infill level
+!    infill_level = -1250.0d0
+
+    infill_level = 0.0d0 !(Tian: try an infill level)
+    if (time*3.171d-8*1.d-6 > 6 .and. time*3.171d-8*1.d-6 < 8) then !(Tian: stop infill after 5Myr
+       infill_level = 0.0d0 !(Tian: try an infill level)
+    else
+       infill_level = 0.0d0
+    endif !(Tian: try an infill level)
+    do i = 1, nx-1
+       if (cord(1,i,2) < infill_level)then
+          dhacc(i) = dhacc(i) + (infill_level - cord(1,i,2))
+          cord(1,i,2) = infill_level
+       endif
+    end do
 
     ! adjust markers
     if(mod(nloop, 100) .eq. 0) then
-!!$        print *, 'max sed/erosion rate (m/yr):' &
-!!$             , maxval(dh(1:nx)) * 3.16e7 / dt &
-!!$             , minval(dh(1:nx)) * 3.16e7 / dt
+        !print *, 'max sed/erosion rate (m/yr):' & !(Tian: uncommented)
+        !     , maxval(dh(1:nx)) * 3.16e7 / dt & !(Tian: uncommented) 
+        !     , minval(dh(1:nx)) * 3.16e7 / dt !(Tian: uncommented) 
         call resurface
+ !       print *, 'resurface called' !(Tian)
     end if
 endif
 
@@ -185,63 +211,74 @@ subroutine resurface
   dimension shp2(2,3,2)
 
   do i = 1, nx-1
-      ! averge thickness of this element
-      elz = 0.5 * (cord(1,i,2) - cord(2,i,2) + cord(1,i+1,2) - cord(2,i+1,2))
-      ! change in topo
-      dtopo = dhacc(i)
-      ! # of markers in this element
+      call shape_functions(1,i,shp2)
+
+      ! add/remove markers if topo changed too much
+      surface = 0.5 * (cord(1,i,2) + cord(1,i+1,2))
+      elz = surface - 0.5 * (cord(2,i,2) + cord(2,i+1,2))
+      diff = dhacc(i)
+!      print *, 'add sediment diff, kinc, diff*kinc, elz', diff, kinc, diff*kinc, elz !(Tian1607)
       kinc = sum(nphase_counter(:,1,i))
+      if (diff*kinc .ge. elz) then
+          ! sedimentation, add a sediment marker
+!          print *, 'add sediment', i, diff, elz !(Tian1607 uncommented)
+          do while (.true.)
+              call random_number(rx)
+              xx = cord(1,i,1) + rx * (cord(1,i+1,1) - cord(1,i,1))
+              yy = min(cord(1,i,2), cord(1,i+1,2)) - 0.05 * elz
+              !! time*3.171d-8*1d-5 = time in 0.1 Myrs: 1 = 0.1 Myrs, 2 = 0.2 Myrs, 10 = 1.0 Myrs, etc.
+ !             call add_marker(xx, yy, ksed1+mod(int(time*3.171d-8*1.d-5),10), time, nmarkers, 1, i, inc) !(Tian CM)
+ !             call add_marker(xx, yy, 7, time, nmarkers, 1, i, inc)!(Tian1607)
+!              call add_marker(xx, yy, 7 + mod(int(time*3.171d-8*1.d-6),10), time, nmarkers, 1, i, inc)!(Tian1607)
+!              mod(int(time*3.171d-8*1.d-6),10) each Myr will increase phase by one (Tian1607)
+!             call add_marker(xx, yy, 8 + mod(int(time*0.5*3.171d-8*1.d-6),2), time, nmarkers, 1, i, inc)!(Tian1607)
+!              mod(int(time*3.171d-8*1.d-6),10) each two Myr alternate phases between 8 and 9 (Tian1607)
+              if (time*3.171d-8*1.d-6 > 6 .and. time*3.171d-8*1.d-6 < 10) then !(Tian: stop infill after 5Myr
+                 call add_marker(xx, yy, 8 + mod(int(time*0.1*3.171d-8*1.d-5),2), time, nmarkers, 1, i, inc)!(Tian1607)
+              else
+                 call add_marker(xx, yy, 8 + mod(int(time*0.1*3.171d-8*1.d-5),2), time, nmarkers, 1, i, inc)!(Tian1607)
+              endif !(Tian: try an infill level)
 
-      if (abs(dtopo*kinc) >= elz) then
-          ! add/remove markers if topo changed too much
-          if (dtopo > 0.) then
-              ! sedimentation, add a sediment marker
-              !print *, 'add sediment', i, dtopo, elz
-              do while(.true.)
-                  call random_number(rx)
-                  xx = cord(1,i,1) + rx * (cord(1,i+1,1) - cord(1,i,1))
-                  yy = cord(1,i,2) + rx * (cord(1,i+1,2) - cord(1,i,2)) - 0.05*elz
-                  call add_marker(xx, yy, ksed2, time, nmarkers, 1, i, inc)
-                  if(inc==1) exit
-                  !write(333,*) 'sedimentation failed: ', xx, yy, rx, elz
-                  !write(333,*) '  ', cord(1,i,:)
-                  !write(333,*) '  ', cord(1,i+1,:)
-                  !write(333,*) '  ', cord(2,i,:)
-                  !write(333,*) '  ', cord(2,i+1,:)
-                  !call SysMsg('Cannot add marker for sedimentation.')
-              end do
-          else
-              ! erosion, remove the top marker
-              !print *, 'erosion', i, dtopo, elz
-              ymax = -1e30
-              nmax = 0
-              kmax = 0
-              call shape_functions(1,i,shp2)
-              do k = 1, ntopmarker(i)
-                  n = itopmarker(k, i)
-                  ntriag = mark(n)%ntriag
-                  m = mod(ntriag,2) + 1
-                  call bar2xy(mark(n)%a1, mark(n)%a2, shp2(:,:,m), x, y)
-                  if(ymax < y) then
-                      ymax = y
-                      nmax = n
-                      kmax = k
-                  endif
-              end do
-              mark(nmax)%dead = 0
-              ! replace topmarker k with last topmarker
-              itopmarker(kmax,i) = itopmarker(ntopmarker(i),i)
-              ntopmarker(i) = ntopmarker(i) - 1
-          endif
+!             call add_marker(xx, yy, 8 + mod(int(time*0.1*3.171d-8*1.d-5),2), time, nmarkers, 1, i, inc)!(Tian1607)
+!              mod(int(time*3.171d-8*1.d-6),10) each 1 Myr alternate phases between 8 and 9 (Tian1607)
 
+              if(inc.ne.0) exit
+!              write(*,*) cord(1,i:i+1,1), cord(1:2,i,2), xx, yy
+          enddo
+!          print *, 'debug end' !(Tian 1607 for finding where the problem comes from)
           dhacc(i) = 0
 
           ! recalculate phase ratio
           kinc = sum(nphase_counter(:,1,i))
           phase_ratio(1:nphase,1,i) = nphase_counter(1:nphase,1,i) / float(kinc)
 
-      else
-          ! nothing to do
+      else if(-diff*kinc .ge. elz) then
+          ! erosion, remove the top marker
+          !print *, 'erosion', i, diff, elz
+          ymax = -1e30
+          nmax = 0
+          kmax = 0
+          do k = 1, ntopmarker(i)
+              n = itopmarker(k, i)
+              ntriag = mark(n)%ntriag
+              m = mod(ntriag,2) + 1
+              call bar2xy(mark(n)%a1, mark(n)%a2, shp2(:,:,m), x, y)
+              if(ymax < y) then
+                  ymax = y
+                  nmax = n
+                  kmax = k
+              endif
+          end do
+          mark(nmax)%dead = 0
+          ! replace topmarker k with last topmarker
+          itopmarker(k,i) = itopmarker(ntopmarker(i),i)
+          ntopmarker(i) = ntopmarker(i) - 1
+
+          dhacc(i) = 0
+
+          ! recalculate phase ratio
+          kinc = sum(nphase_counter(:,1,i))
+          phase_ratio(1:nphase,1,i) = nphase_counter(1:nphase,1,i) / float(kinc)
       end if
   end do
 

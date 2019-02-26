@@ -21,7 +21,7 @@ end if
 
 ! Undimensional parametr:  dt / relaxation time
 temp = rmu/(2.*viscosity) * dt 
-
+!temp  = 0.1 !Tian2017 to prevent stopping without reason   (I guess the write was not working, next time simply search msgstr or SysMsg)
 if ( temp .gt. 0.5 ) then
     write( msgstr, '(A,A,e8.1,A,e7.1,A,e7.1)' ) 'Maxwell: time step!',' visc=',viscosity,' m0=',rmu0,' m=',rmu
     call SysMsg(msgstr)

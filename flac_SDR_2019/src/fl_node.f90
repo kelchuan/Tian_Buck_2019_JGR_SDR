@@ -419,6 +419,12 @@ do i=1,nx
         endif
 
         ! DAMPING
+        if (time.lt.600.e3*sec_year) then
+           demf = 0.5
+        else
+           demf = 0.8
+        endif
+
         if( iand(ncod(j,i,1),1).ne.1 .and. abs(vel(j,i,1)).gt.1.0d-13 ) then
             force(j,i,1) = force(j,i,1) - demf*sign(force(j,i,1),vel(j,i,1))
         endif

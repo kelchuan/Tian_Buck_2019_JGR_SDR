@@ -8,10 +8,16 @@ include 'precision.inc'
 include 'params.inc'
 include 'arrays.inc'
 
-parameter( kindr=4, kindi=4 )
+!parameter( kindr=4, kindi=4 )
+parameter( kindr=4, kindi=4 ) !Tian for higher particle precision
 
 real(kindr), allocatable :: D1d(:),De(:,:),Dn2(:,:,:)
 real(kindr) rtime
+integer SDR_ind !Tian
+integer ind
+character*20 :: filename
+!SDR_ind = mod(int(time*0.5*3.171d-8*1.d-6),10)+1  !Tian every 2Myr increment the index by 1
+ind = mod(int(time*3.171d-8*1.d-6),num_SDR)+1  !Tian every 2Myr increment the index by 1  
 
 ! define record number and write it to contents
 if( lastout .eq. 1 ) then
@@ -147,15 +153,29 @@ if( io_sII.eq.1 ) then
 endif
 
 
-! Sxx in [kb]
+! Sxx in [kb] deviatoric
 if( io_sxx.eq.1 ) then
     do i = 1, nx-1
         do j = 1, nz-1
             sxx = 0.25 * (stress0(j,i,1,1)+stress0(j,i,1,2)+stress0(j,i,1,3)+stress0(j,i,1,4) )
             De(j,i) = real(( sxx-stressI(j,i) ) * 1.e-8)
+            !De(j,i) = real( sxx  * 1.e-8)
         end do
     end do
     open (1,file='sxx.0',access='direct',recl=nwords*kindr) 
+    write (1,rec=nrec) De
+    close (1)
+endif
+! Sxx in [kb] absolute
+if( io_sxx.eq.1 ) then
+    do i = 1, nx-1
+        do j = 1, nz-1
+            sxx = 0.25 * (stress0(j,i,1,1)+stress0(j,i,1,2)+stress0(j,i,1,3)+stress0(j,i,1,4) )
+            !De(j,i) = real(( sxx-stressI(j,i) ) * 1.e-8)
+            De(j,i) = real( sxx  * 1.e-8)
+        end do
+    end do
+    open (1,file='sxx_abs.0',access='direct',recl=nwords*kindr) 
     write (1,rec=nrec) De
     close (1)
 endif
@@ -174,6 +194,19 @@ if( io_szz.eq.1 ) then
     close (1)
 endif
 
+! Szz in [kb] absolute
+if( io_szz.eq.1 ) then
+    do i = 1, nx-1
+        do j = 1, nz-1
+            szz = 0.25 * (stress0(j,i,2,1)+stress0(j,i,2,2)+stress0(j,i,2,3)+stress0(j,i,2,4) )
+            De(j,i) = real( szz  * 1.e-8)
+        end do
+    end do
+    open (1,file='szz_abs.0',access='direct',recl=nwords*kindr) 
+    write (1,rec=nrec) De
+    close (1)
+endif
+
 
 ! Sxz in [kb]
 if( io_sxz.eq.1 ) then
@@ -187,6 +220,18 @@ if( io_sxz.eq.1 ) then
     write (1,rec=nrec) De
     close (1)
 endif
+! stress difference in MPa Tian 201801
+do i = 1, nx-1
+   do j = 1, nz-1
+      sxx = 0.25 * (stress0(j,i,1,1)+stress0(j,i,1,2)+stress0(j,i,1,3)+stress0(j,i,1,4))
+      szz = 0.25 * (stress0(j,i,2,1)+stress0(j,i,2,2)+stress0(j,i,2,3)+stress0(j,i,2,4))
+      De(j,i) = real((sxx-szz) * 1.e-8)
+   end do
+end do
+open (1,file='s_diff.0',access='direct',recl=nwords*kindr) 
+write (1,rec=nrec) De
+close (1)
+
 
 
 ! Pressure in [kb]
@@ -260,6 +305,20 @@ if( io_diss.eq.1 ) then
     close (1)
 endif
 
+! Effective Conductivity
+if( if_hydro.eq.1 ) then
+    do i = 1, nx-1
+        do j = 1, nz-1
+!           iph = iphase(i,j,phasez(j,i))
+           iph = iphase(j,i)
+           De(j,i) = HydroCond(j,i)
+        enddo
+    enddo
+    open (1,file='cond.0',access='direct',recl=nwords*kindr) 
+    write (1,rec=nrec) De
+    close (1)
+endif
+
 deallocate( De )
 
 
@@ -293,6 +352,31 @@ endif
 
 deallocate( D1d )
 
+!-----------------------------------------------------------
+! Surface Particles (adapted from Ito2007) Tian20170405 
+!-----------------------------------------------------------
+do SDR_ind = 1,ind
+   if (np.gt.0) then
+      allocate( De(np,2) )
+      write(filename,'(A,I2.2,A)') 'particles_',SDR_ind,'.0'
+      !ref:https://docs.oracle.com/cd/E19957-01/805-4939/6j4m0vnbu/index.html
+      !Iw.m
+      !-->w specifies that the field occupies w positions.
+      !-->m specifies the insertion of leading zeros to a width of m.
+      nwords = np*2
+!      De(1:np,1) = xp(1:np,SDR_ind) / 1000
+!      De(1:np,2) = zp(1:np,SDR_ind) / 1000
+!      De(1:np,1) = dble(xp(1:np,SDR_ind))
+!      De(1:np,2) = dble(zp(1:np,SDR_ind))
+      De(1:np,1) = real(xp(1:np,SDR_ind) / 1000.0d0)
+      De(1:np,2) = real(zp(1:np,SDR_ind) / 1000.0d0)
+      !   open (1,file='particles.0',access='direct',recl=nwords*kindr)
+      open (1,file=filename,access='direct',recl=nwords*kindr) 
+      write (1,rec=nrec) De
+      close (1)
+      deallocate( De )
+   endif
+end do
 
 return 
 end

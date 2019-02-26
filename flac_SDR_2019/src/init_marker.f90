@@ -146,7 +146,7 @@ subroutine add_marker(x, y, iph, age, kk, j, i, inc)
   mark(kk)%phase = iph
 
   nphase_counter(iph,j,i) = nphase_counter(iph,j,i) + 1
-
+!  print *, "marker pahse = ", iph !(Tian1607)
   if(kk > max_markers) then
       call SysMsg('ADD_MARKER: # of markers exceeds max. value. Please increase mark array size.')
       stop 15

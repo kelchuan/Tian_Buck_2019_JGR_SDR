@@ -18,6 +18,6 @@ elseif ( boff .gt. ratu ) then
 endif      
 
 dt = max (dt, dt_min )
-!write(*,*)dt
+!write(*,*) "dt = ", dt, "dt_elastic = ", dt_elastic, "dt_maxwell = ", dt_maxwell
 return
 end

@@ -38,8 +38,16 @@ elseif (idt_scale.eq.2) then
         dt_elastic = dlmin*frac*strain_inert/(1./sec_year/100)
     else
 !write(*,'(5F45.20)')dt_elastic,dlmin,frac,strain_inert,vbc
+!       write(*,*) 'dt_elastic=', dt_elastic
+!       write(*,*) 'dlmin=', dlmin
+!       write(*,*) 'frac=', frac
+!       write(*,*) 'strain_inert=',strain_inert
+!       write(*,*) 'vbc=',vbc
+!       write(*,*)
+       
         dt_elastic = dlmin*frac*strain_inert/vbc
 !write(*,'(F45.20)')dt_elastic
+!        write(*,*) 'DT_elastic=', dt_elastic
     endif
 endif
 vel_max = 0.
@@ -121,14 +129,18 @@ do 1 i = 1,nx-1
             !dt_m =visn(j,i)/rm(iph)*fracm
             if( (irheol(iph).eq.3 .OR. irheol(iph).eq.12) .AND. rm(iph).lt.1.e+11 ) then
                 visc_cut = 1.e+10
+!write(*,*) 'v_min=', v_min, 'visc_cut=', visc_cut
                 if( v_min .lt. visc_cut ) then
                     rmu = rm(iph) * v_min/visc_cut
                 else
                     rmu = rm(iph)
                 endif
                 dt_m =v_min/rmu * fracm
+
                 dt_maxwell = min (dt_m,dt_maxwell)
-            endif
+!                dt_maxwell = dt_scale !Tian2017 Hardwire dt_maxwell to the static dt to allow very low viscosity of dike
+!write(*,*) 'dt_maxwell=', dt_maxwell/sec_year, 'dt_m=', dt_m, 'rmu=',rmu,'fracm=',fracm
+             endif
         endif
 
 1 continue 

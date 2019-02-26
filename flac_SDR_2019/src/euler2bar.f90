@@ -101,7 +101,8 @@ subroutine check_inside(x,y,bar1,bar2,ntr,i,j,inc)
       endif
 
       ! Calculate triangle properties
-      det=( (x2*y3-y2*x3) - (x1*y3-y1*x3) + (x1*y2-y1*x2) )
+      det=( (x2*y3-y2*x3) - (x1*y3-y1*x3) + (x1*y2-y1*x2) )  !twice the area of the triangle
+      !ref:https://people.richland.edu/james/lecture/m116/matrices/area.html
 
       !Find the parameters ONLY for 2 vertices
       xxmpt(1,1) = (x2*y3-y2*x3)/det
