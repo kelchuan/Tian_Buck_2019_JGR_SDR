@@ -172,11 +172,11 @@ if( topo_kappa .gt. 0. ) then
 
     infill_level = 0.0d0 !(Tian: try an infill level)
     do i = 1, nx-1
-       if (i < float(nx / 2)) then 
-          infill_level = 200. * (1 - float(i)/float(nx/2))  !(Tian: try an infill level)
-       else
-          infill_level = 0.0d0
-       endif !(Tian: try an infill level)
+       !if (i < float(nx / 2)) then 
+       !   infill_level = 200. * (1 - float(i)/float(nx/2))  !(Tian: try an infill level)
+       !else
+       !   infill_level = 0.0d0
+       !endif !(Tian: try an infill level)
        !print *, 'i=', i, 'infill =', infill_level
        if (cord(1,i,2) < infill_level)then
           dhacc(i) = dhacc(i) + (infill_level - cord(1,i,2))
